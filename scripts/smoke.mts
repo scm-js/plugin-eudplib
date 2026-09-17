@@ -40,6 +40,7 @@ async function startRuntime(): Promise<Scope> {
 const req = JSON.parse(readFileSync(reqPath, "utf8")) as { map: string; plugins: Record<string, Record<string, string | number>> };
 const map = new Uint8Array(Buffer.from(req.map, "base64"));
 const sources = magentaPath ? { magenta: readFileSync(magentaPath, "utf8") } : {};
+const files: Record<string, string> = {};
 
 async function build(id: number) {
   const scope = await startRuntime();
@@ -49,7 +50,7 @@ async function build(id: number) {
   const answer = new Promise<{ name: string; locale: number; data: Uint8Array }[]>((res, rej) => {
     onMessage = (m) => { if (m.type === "log") lines.push(m.line); else if (m.type === "result") res(m.members); else if (m.type === "error") rej(new Error(m.message)); };
   });
-  const msg: ToWorker = { type: "build", id, chk: split.chk, names: split.names, raw: map, sections: normalizeSections(req.plugins), sources: normalizeSources(sources), shuffle: true, sectorSize: 15 };
+  const msg: ToWorker = { type: "build", id, chk: split.chk, names: split.names, raw: map, sections: normalizeSections(req.plugins), sources: normalizeSources(sources), files, shuffle: true, sectorSize: 15 };
   scope.onmessage!({ data: msg });
   const members = await answer;
   const out = await assembleMap(members, split.extras);

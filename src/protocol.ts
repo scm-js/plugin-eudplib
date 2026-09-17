@@ -12,6 +12,8 @@ export interface BuildMessage {
   raw: Uint8Array;
   sections: NormalizedSections;
   sources: Record<string, string>;
+  /** Data files, written under `/work/files/` for plugin settings to name. */
+  files: Record<string, string>;
   shuffle: boolean;
   sectorSize: number;
 }

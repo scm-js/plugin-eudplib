@@ -148,7 +148,7 @@ export class Runtime {
   running(): boolean { return this.ready !== null; }
 
   async build(
-    input: { chk: Uint8Array; names: string[]; raw: Uint8Array; sections: NormalizedSections; sources: Record<string, string>; shuffle: boolean; sectorSize: number },
+    input: { chk: Uint8Array; names: string[]; raw: Uint8Array; sections: NormalizedSections; sources: Record<string, string>; files: Record<string, string>; shuffle: boolean; sectorSize: number },
     opts: { signal?: AbortSignal; onLog?: (line: string) => void } = {},
   ): Promise<{ name: string; locale: number; data: Uint8Array }[]> {
     if (opts.signal?.aborted) throw abortError();
@@ -159,7 +159,7 @@ export class Runtime {
       if (opts.signal?.aborted) throw abortError();
       const id = ++this.seq;
       const answer = new Promise<{ name: string; locale: number; data: Uint8Array }[]>((resolve, reject) => this.pending.set(id, { resolve, reject, onLog: opts.onLog }));
-      const msg: ToWorker = { type: "build", id, chk: input.chk, names: input.names, raw: input.raw, sections: input.sections, sources: input.sources, shuffle: input.shuffle, sectorSize: input.sectorSize };
+      const msg: ToWorker = { type: "build", id, chk: input.chk, names: input.names, raw: input.raw, sections: input.sections, sources: input.sources, files: input.files, shuffle: input.shuffle, sectorSize: input.sectorSize };
       this.worker!.postMessage(msg);
       return await answer;
     } catch (err) {

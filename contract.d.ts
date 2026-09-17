@@ -16,6 +16,12 @@ export interface EudplibBuildRequest {
    * (`settings` in its globals, `onPluginStart` / `beforeTriggerExec` / `afterTriggerExec`).
    */
   sources?: Record<string, string>;
+  /**
+   * Data files the caller brings, file name → text (an IR as JSON, say). Each is written to
+   * `/work/files/<name>` before the build, which is the path a plugin setting names to
+   * reach it: `{ plugins: { mine: { ir: "/work/files/ir.json" } }, files: { "ir.json": … } }`.
+   */
+  files?: Record<string, string>;
   options?: {
     /** Shuffle the payload's objects, as euddraft does by default. */
     shufflePayload?: boolean;

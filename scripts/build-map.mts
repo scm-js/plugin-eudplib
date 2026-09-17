@@ -2,9 +2,10 @@
  * Build one map from the command line, the way the plugin does it in the editor but under
  * Node (the `pyodide` npm package stands in for the CDN): for scripts that make maps, such
  * as Magenta's probe maps. The plugin sections come as JSON; extra euddraft plugins as
- * `name=path.py`.
+ * `name=path.py`; data files for the plugins as `file=name=path` (reachable as
+ * `/work/files/<name>` from a plugin setting).
  *
- *   npm run build:map -- <in.scx> <out.scx> <plugins.json> [name=plugin.py ...]
+ *   npm run build:map -- <in.scx> <out.scx> <plugins.json> [name=plugin.py ...] [file=name=path ...]
  */
 import { readFileSync, writeFileSync } from "node:fs";
 import { createRequire } from "node:module";
@@ -32,13 +33,18 @@ await ready;
 const map = new Uint8Array(readFileSync(inPath));
 const plugins = JSON.parse(readFileSync(pluginsPath, "utf8")) as Record<string, Record<string, string | number>>;
 const sources: Record<string, string> = {};
-for (const e of extra) { const i = e.indexOf("="); if (i < 0) { console.error(`expected name=path.py, got ${e}`); process.exit(2); } sources[e.slice(0, i)] = readFileSync(e.slice(i + 1), "utf8"); }
+const files: Record<string, string> = {};
+for (const e of extra) {
+  if (e.startsWith("file=")) { const [, name, ...rest] = e.split("="); files[name] = readFileSync(rest.join("="), "utf8"); continue; }
+  const i = e.indexOf("="); if (i < 0) { console.error(`expected name=path.py or file=name=path, got ${e}`); process.exit(2); }
+  sources[e.slice(0, i)] = readFileSync(e.slice(i + 1), "utf8");
+}
 const split = await splitMap(map);
 const lines: string[] = [];
 const answer = new Promise<{ name: string; locale: number; data: Uint8Array }[]>((res, rej) => {
   onMessage = (m) => { if (m.type === "log") lines.push(m.line); else if (m.type === "result") res(m.members); else if (m.type === "error") rej(new Error(m.message)); };
 });
-const msg: ToWorker = { type: "build", id: 1, chk: split.chk, names: split.names, raw: map, sections: normalizeSections(plugins), sources: normalizeSources(sources), shuffle: true, sectorSize: 15 };
+const msg: ToWorker = { type: "build", id: 1, chk: split.chk, names: split.names, raw: map, sections: normalizeSections(plugins), sources: normalizeSources(sources), files, shuffle: true, sectorSize: 15 };
 scope.onmessage!({ data: msg });
 try {
   const members = await answer;

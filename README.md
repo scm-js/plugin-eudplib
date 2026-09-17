@@ -58,6 +58,7 @@ export interface EudplibBuildRequest {
   map: Uint8Array;                                                   // a .scm/.scx archive (a bare .chk is taken too)
   plugins: Record<string, Record<string, string | number>>;          // .eds sections, name → settings
   sources?: Record<string, string>;                                  // your euddraft plugins, module name → Python
+  files?: Record<string, string>;                                    // data files, name → text, at /work/files/<name> for a setting to name
   options?: { shufflePayload?: boolean; sectorSize?: number };       // euddraft's; shuffle on and 15 by default
 }
 export interface EudplibBuildResult { map: Uint8Array; log: string; chkBytes: number; ms: number }

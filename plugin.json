@@ -1,7 +1,7 @@
 {
   "name": "eudplib",
   "id": "eudplib",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "A library other plugins build with: runs eudplib, the EUD trigger compiler behind euddraft, inside the editor with no server. Nothing about a map leaves the machine. The runtime is downloaded once, on the first build.",
   "author": "Jeany",
   "homepage": "https://github.com/scm-js/plugin-eudplib",

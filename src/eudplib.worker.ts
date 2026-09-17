@@ -7,6 +7,7 @@
  * worker: eudplib's map and main loop are module state and cannot be loaded twice.
  */
 import type { BuildMessage, FromWorker, ToWorker } from "./protocol";
+import { FILES_DIR } from "./compose";
 import driverSource from "../python/driver.py";
 import shimSource from "../python/mpqshim.py";
 import pluginLoaderSource from "../python/euddraft/pluginLoader.py";
@@ -84,6 +85,9 @@ function build(py: Pyodide, m: BuildMessage): { name: string; locale: number; da
   py.FS.writeFile(`${dir}/request.json`, JSON.stringify({ names: m.names, sections: m.sections, shuffle: m.shuffle, sectorSize: m.sectorSize }));
   // The caller's own plugins go beside the bundled ones, where euddraft's loader looks them up by name.
   for (const [name, code] of Object.entries(m.sources)) py.FS.writeFile(`${ED}/plugins/${name}.py`, code);
+  // The caller's data files, at the one address a plugin setting can name.
+  py.FS.mkdirTree(FILES_DIR);
+  for (const [name, text] of Object.entries(m.files)) py.FS.writeFile(`${FILES_DIR}/${name}`, text);
   py.runPython(`
 import json, mpqshim, driver
 _d = ${JSON.stringify(dir)}

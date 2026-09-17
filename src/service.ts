@@ -6,7 +6,7 @@
 import type { PluginApi } from "@scm-js/plugin-api";
 import type { EudplibBuildRequest, EudplibBuildResult, EudplibService, EudplibState } from "../contract";
 import { assembleMap, splitMap } from "./archive";
-import { normalizeSections, normalizeSources } from "./compose";
+import { normalizeFiles, normalizeSections, normalizeSources } from "./compose";
 import { askInstall } from "./dialogs";
 import type { Runtime } from "./runtime";
 import { downloadBytes } from "./urls";
@@ -34,6 +34,7 @@ export function createService(api: PluginApi, runtime: Runtime): EudplibService 
   const build = async (request: EudplibBuildRequest, opts: { signal?: AbortSignal; onLog?: (line: string) => void } = {}): Promise<EudplibBuildResult> => {
     const sections = normalizeSections(request.plugins);
     const sources = normalizeSources(request.sources);
+    const files = normalizeFiles(request.files);
     if (!(request.map instanceof Uint8Array) || !request.map.length) throw new Error("The request needs the map's bytes.");
     if (!(await ensure({ reason: api.i18n.t("A plugin needs it to build this map.") }))) throw new Error("The build runtime is not installed.");
     const started = performance.now();
@@ -42,7 +43,7 @@ export function createService(api: PluginApi, runtime: Runtime): EudplibService 
     const split = await splitMap(request.map);
     if (split.unnamed) onLog(api.i18n.t("{n, plural, one {# member of the archive has no name in its listfile and is not carried into the built map.} other {# members of the archive have no name in its listfile and are not carried into the built map.}}", { n: split.unnamed }));
     const members = await runtime.build({
-      chk: split.chk, names: split.names, raw: request.map, sections, sources,
+      chk: split.chk, names: split.names, raw: request.map, sections, sources, files,
       shuffle: request.options?.shufflePayload ?? true, sectorSize: request.options?.sectorSize ?? 15,
     }, { signal: opts.signal, onLog });
     const out = await assembleMap(members, split.extras);

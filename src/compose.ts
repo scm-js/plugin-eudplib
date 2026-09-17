@@ -48,6 +48,29 @@ export function composeEds(sections: NormalizedSections): string {
 
 const MODULE = /^[A-Za-z_][A-Za-z0-9_]*$/;
 export const MAX_SOURCE_CHARS = 512 * 1024;
+export const MAX_FILES_CHARS = 4 * 1024 * 1024;
+export const FILES_DIR = "/work/files";
+const FILE_NAME = /^[A-Za-z0-9_][A-Za-z0-9_.-]{0,79}$/;
+
+/**
+ * Data files the caller brings, checked: a plain file name and text each, bounded in all.
+ * They are written under `/work/files/` before the build, so a plugin setting names one
+ * as `/work/files/<name>` (a forward-slash path, which the value rule allows).
+ */
+export function normalizeFiles(files: unknown): Record<string, string> {
+  if (files === undefined || files === null) return {};
+  if (typeof files !== "object" || Array.isArray(files)) throw new BadRequest("files must be an object of file name → text.");
+  const out: Record<string, string> = {};
+  let total = 0;
+  for (const [name, text] of Object.entries(files as Record<string, unknown>)) {
+    if (!FILE_NAME.test(name) || name === "." || name === "..") throw new BadRequest(`Bad file name: ${JSON.stringify(name)}.`);
+    if (typeof text !== "string") throw new BadRequest(`Bad content for file '${name}'.`);
+    total += text.length;
+    if (total > MAX_FILES_CHARS) throw new BadRequest("files are too large.");
+    out[name] = text;
+  }
+  return out;
+}
 
 /** The caller's own euddraft plugins as Python source, checked: a module name and a bounded string each. */
 export function normalizeSources(sources: unknown): Record<string, string> {

@@ -44,3 +44,15 @@ describe("normalizeSources", () => {
     expect(() => normalizeSources("code")).toThrow(BadRequest);
   });
 });
+
+describe("normalizeFiles", async () => {
+  const { normalizeFiles, FILES_DIR } = await import("../src/compose");
+  it("takes plain names with text and refuses the rest", () => {
+    expect(normalizeFiles({ "ir.json": "{}" })).toEqual({ "ir.json": "{}" });
+    expect(normalizeFiles(undefined)).toEqual({});
+    expect(() => normalizeFiles({ "../x": "" })).toThrow(/file name/);
+    expect(() => normalizeFiles({ "a/b": "" })).toThrow(/file name/);
+    expect(() => normalizeFiles({ a: 1 })).toThrow(/content/);
+    expect(FILES_DIR).toBe("/work/files");
+  });
+});
