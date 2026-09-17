@@ -1,0 +1,66 @@
+diff -ru -x .git ../sdist/eudplib-0.81.0/pyproject.toml src/pyproject.toml
+--- ../sdist/eudplib-0.81.0/pyproject.toml	2006-07-23 19:21:28.000000000 -0600
++++ src/pyproject.toml	2026-09-17 12:12:36.689726450 -0600
+@@ -1,16 +1,8 @@
+ [build-system]
+-# These requirements must be kept sync with the requirements in
+-# ./.github/requirements/build-requirements.{in,txt}
+-requires = [
+-    "maturin>=1,<2",
+-    "cmake",  # need for static build StormLib and the epScript library
+-    "babel",  # compile .po to .mo for i18n
+-
+-    # Must be kept in sync with `project.dependencies`
+-    "typing_extensions",
+-]
+-build-backend = "build_backend"
+-backend-path = ["."]
++# Plain maturin: no cmake (StormLib is off, see src/rust/Cargo.toml) and no babel
++# (.mo files are skipped; gettext falls back to English).
++requires = ["maturin>=1,<2"]
++build-backend = "maturin"
+ 
+ [project]
+ name = "eudplib"
+diff -ru -x .git ../sdist/eudplib-0.81.0/src/rust/Cargo.toml src/src/rust/Cargo.toml
+--- ../sdist/eudplib-0.81.0/src/rust/Cargo.toml	2006-07-23 19:21:28.000000000 -0600
++++ src/src/rust/Cargo.toml	2026-09-17 12:12:27.905683326 -0600
+@@ -19,13 +19,16 @@
+ indicatif = "0.18.0"
+ tempfile = "3"
+ eudplib-epscript = { path = "eudplib-epscript" }
+-eudplib-stormlib = { path = "eudplib-stormlib" }
+-stormlib-sys = { path = "stormlib-rs/crates/stormlib-sys" }
++eudplib-stormlib = { path = "eudplib-stormlib", optional = true }
++stormlib-sys = { path = "stormlib-rs/crates/stormlib-sys", optional = true }
+ 
+ [features]
+ # See https://github.com/PyO3/pyo3/issues/340
+ extension-module = ["pyo3/extension-module"]
+-default = ["extension-module"]
++# The MPQ archive API (StormLib, built with cmake). Off = no C++ toolchain needed;
++# the host then has to supply `eudplib.bindings._rust.mpqapi` itself.
++stormlib = ["dep:eudplib-stormlib", "dep:stormlib-sys"]
++default = ["extension-module", "stormlib"]
+ 
+ [lib]
+ name = "eudplib_rust"
+diff -ru -x .git ../sdist/eudplib-0.81.0/src/rust/src/lib.rs src/src/rust/src/lib.rs
+--- ../sdist/eudplib-0.81.0/src/rust/src/lib.rs	2006-07-23 19:21:28.000000000 -0600
++++ src/src/rust/src/lib.rs	2026-09-17 12:12:27.905765488 -0600
+@@ -2,6 +2,7 @@
+ mod epscript;
+ mod eudobj;
+ pub(crate) mod localize;
++#[cfg(feature = "stormlib")]
+ mod mpqapi;
+ mod types;
+ 
+@@ -17,6 +18,7 @@
+     use crate::eudobj::eudobj_mod;
+     #[pymodule_export]
+     use crate::localize::register_translator;
++    #[cfg(feature = "stormlib")]
+     #[pymodule_export]
+     use crate::mpqapi::mpqapi_mod;
+ }

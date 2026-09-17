@@ -1,0 +1,6 @@
+node_modules/
+*.tsbuildinfo
+wheel/home/
+wheel/src/
+wheel/dist/
+wheel/*.tar.gz
