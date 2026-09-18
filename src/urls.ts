@@ -3,9 +3,15 @@
  * worker module and the eudplib wheel are this repository's `dist/` at this release's tag,
  * also through jsDelivr. The plugin's own module URL is no help for finding them: the
  * editor imports a fetched plugin through a `blob:` URL, and a plugin compiled into the
- * editor is a chunk under the editor's `assets/`. So the tag is the address, and an
- * `http(s)` module URL (a plugin served from a dev server) or the `runtimeBase` storage
- * override points somewhere else for development.
+ * editor is a chunk under the editor's `assets/` — an `http(s)` address on a web build, so
+ * the scheme alone says nothing. So the tag is the address, and a module served as this
+ * repository's own `plugin.ts` or `dist/plugin.js` (a dev server) or the `runtimeBase`
+ * storage override points somewhere else for development.
+ *
+ * An editor may also carry the runtime itself: the scmJS desktop app and container image
+ * copy the files `runtime.json` lists into `plugin-runtime/eudplib/<version>/` beside the
+ * page, so a build there needs no network. `findBundled` looks for that copy; one made for
+ * another release of the plugin is not this one's, and the CDN stands.
  */
 import { EUDPLIB_VERSION, PYODIDE_VERSION, VERSION, WHEEL_FILE } from "./version";
 
@@ -30,17 +36,38 @@ export interface RuntimeUrls {
  * setting (a folder serving this repository: `http://localhost:8080/`), which wins.
  */
 export function runtimeUrls(entryUrl: string, override: string | null | undefined): RuntimeUrls {
-  const base = override?.trim() ? withSlash(override.trim()) : /^https?:/.test(entryUrl) ? repositoryRoot(entryUrl) : RELEASE_BASE;
+  const base = override?.trim() ? withSlash(override.trim()) : servedFromRepository(entryUrl) ? repositoryRoot(entryUrl) : RELEASE_BASE;
   return { pyodideBase: PYODIDE_BASE, worker: `${base}dist/worker.js`, wheel: `${base}dist/${WHEEL_FILE}` };
+}
+
+/**
+ * Whether the module is this repository served over http(s) — its `plugin.ts` or
+ * `dist/plugin.js`, as a dev server has it — rather than a chunk an editor compiled it into
+ * (`https://editor.scmjs.dev/assets/plugin-1a2b.js`), whose folder holds none of the runtime.
+ */
+export function servedFromRepository(entryUrl: string): boolean {
+  return /^https?:/.test(entryUrl) && /\/(?:dist\/plugin\.js|plugin\.ts)(?:[?#].*)?$/.test(entryUrl);
 }
 
 const withSlash = (s: string) => (s.endsWith("/") ? s : `${s}/`);
 
 /** The folder holding plugin.json: the module is `plugin.ts` at the root or `dist/plugin.js` under it. */
-const repositoryRoot = (entryUrl: string) => new URL("./", entryUrl).href.replace(/\/dist\/$/, "/");
+const repositoryRoot = (entryUrl: string) => new URL("./", entryUrl.replace(/[?#].*$/, "")).href.replace(/\/dist\/$/, "/");
 
 /** One file of the download: its address and its size on the CDN, measured for this Pyodide release. */
 export interface RuntimeFile { url: string; bytes: number }
+
+/** Pyodide's files a build loads, by name in its release folder, with their sizes. */
+const PYODIDE_FILES: [name: string, bytes: number][] = [
+  ["pyodide.mjs", 17_931],
+  ["pyodide.asm.mjs", 1_250_344],
+  ["pyodide.asm.wasm", 9_598_218],
+  ["python_stdlib.zip", 2_545_637],
+  ["pyodide-lock.json", 119_077],
+  [TYPING_EXTENSIONS_FILE, 44_614],
+];
+const WHEEL_BYTES = 993_692;
+const WORKER_BYTES = 92_375;
 
 /**
  * Every file a first build fetches — the list "installed" is measured against, and what
@@ -48,16 +75,10 @@ export interface RuntimeFile { url: string; bytes: number }
  * compressed, so the wire cost is lower).
  */
 export function runtimeFiles(urls: RuntimeUrls): RuntimeFile[] {
-  const p = urls.pyodideBase;
   return [
-    { url: `${p}pyodide.mjs`, bytes: 17_931 },
-    { url: `${p}pyodide.asm.mjs`, bytes: 1_250_344 },
-    { url: `${p}pyodide.asm.wasm`, bytes: 9_598_218 },
-    { url: `${p}python_stdlib.zip`, bytes: 2_545_637 },
-    { url: `${p}pyodide-lock.json`, bytes: 119_077 },
-    { url: `${p}${TYPING_EXTENSIONS_FILE}`, bytes: 44_614 },
-    { url: urls.wheel, bytes: 993_692 },
-    { url: urls.worker, bytes: 92_375 },
+    ...PYODIDE_FILES.map(([name, bytes]) => ({ url: `${urls.pyodideBase}${name}`, bytes })),
+    { url: urls.wheel, bytes: WHEEL_BYTES },
+    { url: urls.worker, bytes: WORKER_BYTES },
   ];
 }
 
@@ -66,3 +87,64 @@ export const downloadBytes = (urls: RuntimeUrls) => runtimeFiles(urls).reduce((n
 /** The Cache API bucket for this release; older ones are dropped at activation. */
 export const CACHE_NAME = `eudplib-${VERSION}-${EUDPLIB_VERSION}-py${PYODIDE_VERSION}`;
 export const CACHE_PREFIX = "eudplib-";
+
+/** Where an editor that carries this release's runtime keeps it, relative to its page. */
+export const BUNDLED_PATH = `plugin-runtime/eudplib/${VERSION}/`;
+
+/** The addresses inside a bundled copy: Pyodide's folder, and `dist/` as it is in this repository. */
+export function bundledUrls(base: string): RuntimeUrls {
+  const b = withSlash(base);
+  return { pyodideBase: `${b}pyodide/`, worker: `${b}dist/worker.js`, wheel: `${b}dist/${WHEEL_FILE}` };
+}
+
+/**
+ * `runtime.json`, what an editor reads to carry the runtime: each file's place in the
+ * bundled copy and where to get it — an absolute address, or a path in this repository at
+ * this release's tag. The editor copies the manifest in beside them, and that copy is what
+ * `findBundled` looks for. `npm run manifest` writes it; a test keeps it current.
+ */
+export interface RuntimeManifest {
+  plugin: "eudplib";
+  version: string;
+  files: { path: string; from: string }[];
+}
+
+export function runtimeManifest(): RuntimeManifest {
+  return {
+    plugin: "eudplib",
+    version: VERSION,
+    files: [
+      ...PYODIDE_FILES.map(([name]) => ({ path: `pyodide/${name}`, from: `${PYODIDE_BASE}${name}` })),
+      { path: `dist/${WHEEL_FILE}`, from: `dist/${WHEEL_FILE}` },
+      { path: "dist/worker.js", from: "dist/worker.js" },
+      // Not loaded by a build; they travel with a copy an editor carries.
+      ...LICENSES,
+    ],
+  };
+}
+
+/** The licences of what a carried copy redistributes, and the notes saying which is whose. */
+const LICENSES = [
+  { path: "licenses/LICENSE", from: "LICENSE" },
+  { path: "licenses/ATTRIBUTION.md", from: "ATTRIBUTION.md" },
+  { path: "licenses/euddraft-LICENSE.txt", from: "python/euddraft/LICENSE.txt" },
+  { path: "licenses/pyodide-LICENSE", from: `https://raw.githubusercontent.com/pyodide/pyodide/${PYODIDE_VERSION}/LICENSE` },
+];
+
+/**
+ * The runtime the editor carries for this release, or null. `pageUrl` is the page's base
+ * (`document.baseURI`). A copy for another release is not this one's; neither is a page
+ * answering every address with index.html, which fails to parse.
+ */
+export async function findBundled(pageUrl: string, fetcher: typeof fetch = fetch): Promise<RuntimeUrls | null> {
+  let base: string;
+  try { base = new URL(BUNDLED_PATH, pageUrl).href; } catch { return null; }
+  try {
+    const res = await fetcher(`${base}runtime.json`, { cache: "no-cache" });
+    if (!res.ok) return null;
+    const m = (await res.json()) as Partial<RuntimeManifest> | null;
+    return m?.plugin === "eudplib" && m.version === VERSION ? bundledUrls(base) : null;
+  } catch {
+    return null;
+  }
+}

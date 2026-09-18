@@ -27,6 +27,10 @@ for the browser, and the eudplib wheel), kept by the browser for later builds. C
 build does not happen; the next one asks again. **Plugins ▸ eudplib…** shows what is
 installed, the versions, and has Install and Remove.
 
+The scmJS desktop app and container image carry the runtime themselves, so there is nothing to
+download there and a build works with no network. That copy is made for one release of this
+plugin: update the plugin past the editor's and it downloads as above.
+
 Each build starts a fresh Python from the download, about two seconds, then eudplib's own
 work — a second or two for a typical map. A build cannot be paused, only stopped.
 
@@ -96,6 +100,13 @@ build. A member the input's listfile does not name cannot be carried and the log
 - "Installed" means the browser's Cache API holds every file of the download
   (`src/urls.ts` lists them with their sizes). The worker fetches the same addresses, which
   the install has just put in the HTTP cache too.
+- An editor carries the runtime by copying the files `runtime.json` lists (each file's place
+  and where to get it; `npm run manifest` writes it from `src/urls.ts`) into
+  `plugin-runtime/eudplib/<version>/` beside its page, with `runtime.json` itself. At
+  activation the plugin asks for that `runtime.json` at its own version; when it answers, the
+  worker loads everything from there and the runtime counts as installed. scmJS does this in
+  its desktop and container builds (`scripts/bundle-plugin-runtimes.mjs` there), not in the
+  hosted editor, where the lookup is one 404 and jsDelivr serves the download.
 - A `runtimeBase` setting in the plugin's storage (a folder serving this repository, such as
   `http://localhost:8080/`) points the worker and the wheel somewhere else for development.
 

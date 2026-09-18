@@ -1,6 +1,6 @@
 {
   "name": "scmjs-plugin-eudplib",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "private": true,
   "description": "eudplib \u2014 the EUD trigger compiler behind euddraft, run inside the scmJS map editor as a library other plugins build with.",
   "author": "Jeany",
@@ -12,7 +12,8 @@
     "typecheck": "tsc -p tsconfig.json",
     "test": "vitest run",
     "smoke": "tsx scripts/smoke.mts",
-    "build:map": "tsx scripts/build-map.mts"
+    "build:map": "tsx scripts/build-map.mts",
+    "manifest": "tsx scripts/runtime-manifest.mts"
   },
   "dependencies": {
     "mopaq": "^1.5.0"

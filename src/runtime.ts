@@ -13,6 +13,10 @@
  * same addresses and land in the browser's HTTP cache, which the install pass has just
  * filled (every address is versioned and immutable on the CDN). Where there is no Cache
  * API (an origin the browser will not give one to), a storage flag stands in.
+ *
+ * An editor that carries the runtime (`findBundled`) is installed from the start: the
+ * worker loads it from beside the page, nothing is downloaded, and there is nothing to
+ * remove but a download from before the editor carried it.
  */
 import type { PluginApi } from "@scm-js/plugin-api";
 import type { NormalizedSections } from "./compose";
@@ -33,9 +37,18 @@ export class Runtime {
   failed: string | null = null;
 
   private readonly api: PluginApi;
-  readonly urls: RuntimeUrls;
+  /** The CDN's addresses until `located` settles, then the bundled copy's if there is one. */
+  urls: RuntimeUrls;
+  /** Whether the editor carries this release's runtime. */
+  bundled = false;
+  /** Settles once the bundled copy has been looked for. */
+  readonly located: Promise<void>;
 
-  constructor(api: PluginApi, urls: RuntimeUrls) { this.api = api; this.urls = urls; }
+  constructor(api: PluginApi, urls: RuntimeUrls, bundled: Promise<RuntimeUrls | null> = Promise.resolve(null)) {
+    this.api = api;
+    this.urls = urls;
+    this.located = bundled.then((local) => { if (local) { this.urls = local; this.bundled = true; } }, () => {});
+  }
 
   private cache(): Promise<Cache> | null {
     return typeof caches === "undefined" ? null : caches.open(CACHE_NAME);
@@ -43,6 +56,8 @@ export class Runtime {
 
   /** Whether every file of the download is here. */
   async installed(): Promise<boolean> {
+    await this.located;
+    if (this.bundled) return true;
     const c = this.cache();
     if (!c) return this.api.storage.get<boolean>(INSTALLED_KEY, false) === true;
     const cache = await c;
@@ -52,6 +67,8 @@ export class Runtime {
 
   /** Fetch every file into the cache, reporting bytes as they arrive. */
   async install(progress: (p: InstallProgress) => void, signal?: AbortSignal): Promise<void> {
+    await this.located;
+    if (this.bundled) return;
     const files = runtimeFiles(this.urls);
     const total = files.reduce((n, f) => n + f.bytes, 0);
     let done = 0;
@@ -94,10 +111,11 @@ export class Runtime {
     this.api.storage.set(INSTALLED_KEY, false);
   }
 
-  /** Caches of earlier releases, gone. */
-  static async dropOld(): Promise<void> {
+  /** Caches of earlier releases, gone — and this one's too when the editor carries the runtime. */
+  async dropOld(): Promise<void> {
+    await this.located;
     if (typeof caches === "undefined") return;
-    for (const name of await caches.keys()) if (name.startsWith(CACHE_PREFIX) && name !== CACHE_NAME) await caches.delete(name);
+    for (const name of await caches.keys()) if (name.startsWith(CACHE_PREFIX) && (this.bundled || name !== CACHE_NAME)) await caches.delete(name);
   }
 
   private setStage(text: string) { this.stage = text; this.onStage?.(text); }
@@ -106,7 +124,7 @@ export class Runtime {
   /** The worker, started if need be: resolves once Python and eudplib are in. */
   private ensureWorker(): Promise<void> {
     if (this.ready) return this.ready;
-    this.ready = new Promise<void>((resolve, reject) => {
+    this.ready = this.located.then(() => new Promise<void>((resolve, reject) => {
       let w: Worker;
       try {
         w = new Worker(URL.createObjectURL(new Blob([BOOTSTRAP], { type: "text/javascript" })), { type: "module" });
@@ -132,7 +150,7 @@ export class Runtime {
       };
       const boot: ToWorker = { type: "boot", pyodideBase: this.urls.pyodideBase, wheel: this.urls.wheel };
       w.postMessage({ ...boot, worker: this.urls.worker });
-    });
+    }));
     return this.ready;
   }
 

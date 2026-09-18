@@ -71,11 +71,12 @@ export function openStatus(api: PluginApi, runtime: Runtime, refresh: () => Prom
     await refresh();
     const s = state();
     const size = mb(downloadBytes(runtime.urls));
-    if (s === "ready") line.set(t("Installed ({size}). Each build starts a fresh Python from it, about two seconds.", { size }), "ok");
+    if (s === "ready" && runtime.bundled) line.set(t("Carried by this editor, so nothing is downloaded. Each build starts a fresh Python from it, about two seconds."), "ok");
+    else if (s === "ready") line.set(t("Installed ({size}). Each build starts a fresh Python from it, about two seconds.", { size }), "ok");
     else if (s === "failed") line.set(t("The runtime failed to start: {why}", { why: runtime.failed ?? "" }), "error");
     else line.set(t("Not installed. The first build downloads about {size}.", { size }), "warn");
     install.hidden = s === "ready";
-    remove.hidden = s !== "ready" && s !== "failed";
+    remove.hidden = runtime.bundled || (s !== "ready" && s !== "failed");
   };
   api.ui.dialog({
     title: t("eudplib"),

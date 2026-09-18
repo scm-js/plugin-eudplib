@@ -10,7 +10,9 @@ patch in `wheel/eudplib-wasm.patch`; nothing in its Python is changed.
 its `applyeuddraft.py` does without the freeze, the message boxes and the auto-updater.
 
 **Pyodide** (https://pyodide.org), Mozilla Public License 2.0. Fetched at run time from
-jsDelivr at the version `src/version.ts` names; nothing of it is in this repository.
+jsDelivr at the version `src/version.ts` names; nothing of it is in this repository. An editor
+that carries the runtime (see `runtime.json`) redistributes Pyodide's files unchanged, with its
+licence as `licenses/pyodide-LICENSE` and the source at https://github.com/pyodide/pyodide.
 
 **mopaq** (https://github.com/jeany55/mopaq), MIT License, bundled into `dist/plugin.js`
 for the archive.
