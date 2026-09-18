@@ -21,6 +21,17 @@ describe("runtimeUrls", () => {
       expect(u.wheel).toBe(`http://localhost:5174/plugin-eudplib/dist/${WHEEL_FILE}`);
     }
   });
+  it("follows a dev server on another origin than the editor's page", () => {
+    const u = runtimeUrls("http://localhost:5174/plugin-eudplib/plugin.ts", null, "http://localhost:5173/?nosplash");
+    expect(u.worker).toBe("http://localhost:5174/plugin-eudplib/dist/worker.js");
+  });
+  it("takes the editor's own copy of the source, on the page's origin, for a compiled-in plugin", () => {
+    for (const entry of ["http://localhost:5173/plugins/eudplib/plugin.ts", "http://localhost:5173/plugins/eudplib/plugin.ts?t=1726650000"]) {
+      const u = runtimeUrls(entry, null, "http://localhost:5173/?nosplash");
+      expect(u.worker).toBe(`${RELEASE_BASE}dist/worker.js`);
+      expect(u.wheel).toBe(`${RELEASE_BASE}dist/${WHEEL_FILE}`);
+    }
+  });
   it("lets the runtimeBase setting win", () => {
     const u = runtimeUrls("blob:x", "http://localhost:8080");
     expect(u.worker).toBe("http://localhost:8080/dist/worker.js");

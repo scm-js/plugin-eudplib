@@ -1,7 +1,7 @@
 {
   "name": "eudplib",
   "id": "eudplib",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "A library that lets other plugins build EUD maps: it runs eudplib, the trigger compiler behind euddraft, in your browser on your machine (WebAssembly in a Web Worker, via Pyodide). The scmJS desktop app and Docker image include the runtime; anywhere else, the first map you build downloads it once (about 15 MB).",
   "author": "Jeany",
   "homepage": "https://github.com/scm-js/plugin-eudplib",

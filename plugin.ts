@@ -19,8 +19,9 @@ export function activate(api: PluginApi): () => void {
   const t = api.i18n.t;
   const override = api.storage.get<string | null>("runtimeBase", null);
   // A development address wins over a copy the editor carries; otherwise that copy wins over the CDN.
-  const bundled = override?.trim() || servedFromRepository(ENTRY_URL) || typeof document === "undefined" ? null : findBundled(document.baseURI);
-  const runtime = new Runtime(api, runtimeUrls(ENTRY_URL, override), bundled ?? undefined);
+  const page = typeof document === "undefined" ? undefined : document.baseURI;
+  const bundled = override?.trim() || servedFromRepository(ENTRY_URL, page) || !page ? null : findBundled(page);
+  const runtime = new Runtime(api, runtimeUrls(ENTRY_URL, override, page), bundled ?? undefined);
   void runtime.dropOld();
   const service = createService(api, runtime);
   const provided = api.services.provide("build", service, { version: 1 });

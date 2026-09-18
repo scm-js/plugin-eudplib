@@ -5,8 +5,10 @@
  * editor imports a fetched plugin through a `blob:` URL, and a plugin compiled into the
  * editor is a chunk under the editor's `assets/` — an `http(s)` address on a web build, so
  * the scheme alone says nothing. So the tag is the address, and a module served as this
- * repository's own `plugin.ts` or `dist/plugin.js` (a dev server) or the `runtimeBase`
- * storage override points somewhere else for development.
+ * repository's own `plugin.ts` or `dist/plugin.js` from another origin than the page (a
+ * dev server) or the `runtimeBase` storage override points somewhere else for development.
+ * On the page's own origin the module is the editor's copy — `plugins/eudplib/plugin.ts`
+ * under the editor's dev server — whose folder has the source and none of `dist/`.
  *
  * An editor may also carry the runtime itself: the scmJS desktop app and container image
  * copy the files `runtime.json` lists into `plugin-runtime/eudplib/<version>/` beside the
@@ -33,21 +35,28 @@ export interface RuntimeUrls {
 
 /**
  * `entryUrl` is `import.meta.url` of the plugin's module; `override` is the `runtimeBase`
- * setting (a folder serving this repository: `http://localhost:8080/`), which wins.
+ * setting (a folder serving this repository: `http://localhost:8080/`), which wins;
+ * `pageUrl` is the editor page's address (`document.baseURI`), where there is one.
  */
-export function runtimeUrls(entryUrl: string, override: string | null | undefined): RuntimeUrls {
-  const base = override?.trim() ? withSlash(override.trim()) : servedFromRepository(entryUrl) ? repositoryRoot(entryUrl) : RELEASE_BASE;
+export function runtimeUrls(entryUrl: string, override: string | null | undefined, pageUrl?: string): RuntimeUrls {
+  const base = override?.trim() ? withSlash(override.trim()) : servedFromRepository(entryUrl, pageUrl) ? repositoryRoot(entryUrl) : RELEASE_BASE;
   return { pyodideBase: PYODIDE_BASE, worker: `${base}dist/worker.js`, wheel: `${base}dist/${WHEEL_FILE}` };
 }
 
 /**
  * Whether the module is this repository served over http(s) — its `plugin.ts` or
  * `dist/plugin.js`, as a dev server has it — rather than a chunk an editor compiled it into
- * (`https://editor.scmjs.dev/assets/plugin-1a2b.js`), whose folder holds none of the runtime.
+ * (`https://editor.scmjs.dev/assets/plugin-1a2b.js`) or the editor's own copy of the source
+ * (`http://localhost:5173/plugins/eudplib/plugin.ts` under its dev server), whose folders
+ * hold none of the runtime. Both of those are on the page's origin; a repository served for
+ * development is on its own.
  */
-export function servedFromRepository(entryUrl: string): boolean {
-  return /^https?:/.test(entryUrl) && /\/(?:dist\/plugin\.js|plugin\.ts)(?:[?#].*)?$/.test(entryUrl);
+export function servedFromRepository(entryUrl: string, pageUrl?: string): boolean {
+  if (!/^https?:/.test(entryUrl) || !/\/(?:dist\/plugin\.js|plugin\.ts)(?:[?#].*)?$/.test(entryUrl)) return false;
+  return !pageUrl || originOf(pageUrl) !== originOf(entryUrl);
 }
+
+const originOf = (url: string) => { try { return new URL(url).origin; } catch { return null; } };
 
 const withSlash = (s: string) => (s.endsWith("/") ? s : `${s}/`);
 
