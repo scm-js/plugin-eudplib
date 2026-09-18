@@ -65,6 +65,8 @@ var Contributions = class {
       return result.map;
     } catch (err2) {
       const message = err2 instanceof Error ? err2.message : String(err2);
+      const detail = err2?.detail;
+      if (typeof detail === "string" && detail !== message) lines.push(detail);
       this.emit({ kind: "failed", purpose: input.purpose, contributors, from: err2 instanceof ContributionError ? err2.from.id : null, message, log: lines.join("\n") });
       throw err2 instanceof ContributionError ? new Error(`${err2.from.label}: ${message}`) : err2;
     }
@@ -99,7 +101,7 @@ function mergeInputs(parts) {
 }
 
 // src/version.ts
-var VERSION = "0.4.0";
+var VERSION = "0.4.1";
 var EUDPLIB_VERSION = "0.81.0";
 var EUDDRAFT_COMMIT = "a00aef1bd7001891a6ca01abbb1f3240a5b00280";
 var PYODIDE_VERSION = "314.0.7";
@@ -268,6 +270,26 @@ function openStatus(api, runtime, refresh, state) {
   });
 }
 
+// src/errors.ts
+var BuildError = class extends Error {
+  /** The whole text as Python wrote it; the same as `message` when it was no traceback. */
+  detail;
+  constructor(text) {
+    super(rootCause(text));
+    this.name = "BuildError";
+    this.detail = text;
+  }
+};
+function rootCause(text) {
+  if (!/Traceback \(most recent call last\)/.test(text)) return text.trim();
+  const first = text.split(/\n\s*(?:During handling of the above exception|The above exception was the direct cause)/)[0];
+  const lines = first.trim().split("\n").map((l) => l.trimEnd());
+  let start = lines.length - 1;
+  while (start > 0 && !/^\s/.test(lines[start - 1]) && !/^Traceback /.test(lines[start - 1])) start--;
+  const message = lines.slice(start).join(" ").trim();
+  return message.replace(/^[A-Za-z_][\w.]*(?:Error|Exception|Fail|Warning|Exit)?:\s+(?=\S)/, "") || message;
+}
+
 // src/runtime.ts
 var INSTALLED_KEY = "installed";
 var Runtime = class {
@@ -429,7 +451,7 @@ var Runtime = class {
           case "error": {
             const p = this.pending.get(m.id);
             this.pending.delete(m.id);
-            p?.reject(new Error(m.message));
+            p?.reject(new BuildError(m.message));
             break;
           }
         }

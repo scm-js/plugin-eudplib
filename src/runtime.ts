@@ -18,6 +18,7 @@
  * worker loads it from beside the page, nothing is downloaded, and there is nothing to
  * remove but a download from before the editor carried it.
  */
+import { BuildError } from "./errors";
 import type { PluginApi } from "@scm-js/plugin-api";
 import type { NormalizedSections } from "./compose";
 import type { FromWorker, ToWorker } from "./protocol";
@@ -145,7 +146,7 @@ export class Runtime {
           case "fatal": this.failed = m.message; this.terminate(); reject(new Error(m.message)); break;
           case "log": (m.id === null ? [...this.pending.values()] : [this.pending.get(m.id)]).forEach((p) => p?.onLog?.(m.line)); break;
           case "result": { const p = this.pending.get(m.id); this.pending.delete(m.id); p?.resolve(m.members); break; }
-          case "error": { const p = this.pending.get(m.id); this.pending.delete(m.id); p?.reject(new Error(m.message)); break; }
+          case "error": { const p = this.pending.get(m.id); this.pending.delete(m.id); p?.reject(new BuildError(m.message)); break; }
         }
       };
       const boot: ToWorker = { type: "boot", pyodideBase: this.urls.pyodideBase, wheel: this.urls.wheel };

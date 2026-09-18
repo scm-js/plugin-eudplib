@@ -64,6 +64,9 @@ export class Contributions {
       return result.map;
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
+      // A Python traceback is the log's to keep; the message is the sentence a person reads.
+      const detail = (err as { detail?: unknown } | null)?.detail;
+      if (typeof detail === "string" && detail !== message) lines.push(detail);
       this.emit({ kind: "failed", purpose: input.purpose, contributors, from: err instanceof ContributionError ? err.from.id : null, message, log: lines.join("\n") });
       throw err instanceof ContributionError ? new Error(`${err.from.label}: ${message}`) : err;
     }

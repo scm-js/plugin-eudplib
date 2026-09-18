@@ -3,7 +3,7 @@
  * the wheel are fetched from this release's own tag on the CDN, and the plugin's module
  * cannot import JSON. `tests/version.test.ts` keeps this equal to the manifest's.
  */
-export const VERSION = "0.4.0";
+export const VERSION = "0.4.1";
 /** The eudplib release the wheel in `dist/` was built from (see `wheel/`). */
 export const EUDPLIB_VERSION = "0.81.0";
 /** The euddraft commit `python/euddraft/` was copied from. */

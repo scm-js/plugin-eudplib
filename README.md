@@ -87,6 +87,11 @@ the contributions were made. `onBuild(listener)` reports `start`, each `log` lin
 or `failed` (with `from`, the id of the contribution whose `collect` threw, or null when the
 build itself failed) — what a plugin needs to show a log or put a marker on a line.
 
+A build that fails in Python rejects with an error whose `message` is the first exception's
+own sentence (`trigscript: no such unit at main.ts:12:5`), not the traceback; the traceback is
+the error's `detail` and the last lines of the `failed` event's `log`. Word what your euddraft
+plugin raises for the person who will read it in the editor's notice.
+
 `build()` stays for a one-off: a probe map, a tool that wants bytes and not a save.
 
 The contract (`contract.d.ts`, `ServiceInfo.version` 2; version 1 had no `contribute` or `onBuild`):
