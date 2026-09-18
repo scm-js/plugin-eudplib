@@ -7,12 +7,13 @@ import type { PluginApi } from "@scm-js/plugin-api";
 import type { EudplibBuildRequest, EudplibBuildResult, EudplibService, EudplibState } from "../contract";
 import { assembleMap, splitMap } from "./archive";
 import { normalizeFiles, normalizeSections, normalizeSources } from "./compose";
+import type { Contributions } from "./contributions";
 import { askInstall } from "./dialogs";
 import type { Runtime } from "./runtime";
 import { downloadBytes } from "./urls";
 import { EUDDRAFT_COMMIT, EUDPLIB_VERSION, PYODIDE_VERSION, VERSION } from "./version";
 
-export function createService(api: PluginApi, runtime: Runtime): EudplibService & { refresh(): Promise<void>; installing(): boolean } {
+export function createService(api: PluginApi, runtime: Runtime, contributions: Contributions): EudplibService & { refresh(): Promise<void>; installing(): boolean } {
   let state: EudplibState = "absent";
   let installing: Promise<boolean> | null = null;
   const refresh = async () => { if (installing) return; state = runtime.failed ? "failed" : (await runtime.installed()) ? "ready" : "absent"; };
@@ -31,12 +32,12 @@ export function createService(api: PluginApi, runtime: Runtime): EudplibService 
     return installing;
   };
 
-  const build = async (request: EudplibBuildRequest, opts: { signal?: AbortSignal; onLog?: (line: string) => void } = {}): Promise<EudplibBuildResult> => {
+  const build = async (request: EudplibBuildRequest, opts: { signal?: AbortSignal; onLog?: (line: string) => void; reason?: string } = {}): Promise<EudplibBuildResult> => {
     const sections = normalizeSections(request.plugins);
     const sources = normalizeSources(request.sources);
     const files = normalizeFiles(request.files);
     if (!(request.map instanceof Uint8Array) || !request.map.length) throw new Error("The request needs the map's bytes.");
-    if (!(await ensure({ reason: api.i18n.t("A plugin needs it to build this map.") }))) throw new Error("The build runtime is not installed.");
+    if (!(await ensure({ reason: opts.reason ?? api.i18n.t("A plugin needs it to build this map.") }))) throw new Error(api.i18n.t("The eudplib runtime is not installed, so the map was not built."));
     const started = performance.now();
     const lines: string[] = [];
     const onLog = (line: string) => { lines.push(line); opts.onLog?.(line); };
@@ -55,5 +56,7 @@ export function createService(api: PluginApi, runtime: Runtime): EudplibService 
     state: () => state,
     downloadBytes: downloadBytes(runtime.urls),
     ensure, build, refresh, installing: () => installing !== null,
+    contribute: (c) => contributions.add(c),
+    onBuild: (listener) => contributions.onBuild(listener),
   };
 }

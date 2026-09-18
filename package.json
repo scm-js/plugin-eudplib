@@ -1,8 +1,8 @@
 {
   "name": "scmjs-plugin-eudplib",
-  "version": "0.3.1",
+  "version": "0.4.0",
   "private": true,
-  "description": "eudplib \u2014 the EUD trigger compiler behind euddraft, run inside the scmJS map editor as a library other plugins build with.",
+  "description": "eudplib — the EUD trigger compiler behind euddraft, run inside the scmJS map editor as a library other plugins build with.",
   "author": "Jeany",
   "license": "MIT",
   "type": "module",
@@ -19,7 +19,7 @@
     "mopaq": "^1.5.0"
   },
   "devDependencies": {
-    "@scm-js/plugin-api": "^1",
+    "@scm-js/plugin-api": "^1.26.0",
     "@types/node": "^24.13.3",
     "esbuild": "^0.28.2",
     "pyodide": "314.0.7",

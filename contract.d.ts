@@ -2,7 +2,7 @@
  * The `eudplib.build` service, as other plugins see it. Types only: take this file (or
  * the `@scm-js/plugin-eudplib` copy in the README) with `import type` and reach the object
  * through `api.services.watch("eudplib.build", …)`. The provider's `ServiceInfo.version` is
- * 1 for this shape.
+ * 2 for this shape; 1 had `build` alone, without `contribute` and `onBuild`.
  */
 
 export interface EudplibBuildRequest {
@@ -41,6 +41,42 @@ export interface EudplibBuildResult {
   ms: number;
 }
 
+/** What one plugin brings to a build: the request's `plugins`, `sources` and `files`, without the map. */
+export interface EudplibInput {
+  plugins: EudplibBuildRequest["plugins"];
+  sources?: EudplibBuildRequest["sources"];
+  files?: EudplibBuildRequest["files"];
+}
+
+/**
+ * A standing offer to take part in the map's build. The library owns the editor's build
+ * step: whenever the map is saved, tested or exported, every contribution that `applies`
+ * is asked to `collect`, the answers are merged, and the map is built once. Nothing
+ * contributes → nothing is built and Save is what it always was.
+ */
+export interface EudplibContribution {
+  /** Yours alone; the same id again replaces the earlier contribution. */
+  id: string;
+  /** Your plugin's name, for the install question and a failure notice ("TrigScript: main.ts:3 — …"). */
+  label: string;
+  /** Whether the open map has anything of yours to build. Asked on every save: cheap, synchronous, no side effects. */
+  applies(): boolean;
+  /**
+   * Your part of the request, for the open map as it is now — compile here. Throw an
+   * `Error` worded for the user and the save goes through without the build, with your
+   * message in the notice. Two contributions may not bring different things under one name.
+   */
+  collect(ctx: { purpose: "save" | "test" | "export"; signal: AbortSignal }): Promise<EudplibInput>;
+}
+
+/** A build the library ran for the editor's step, as it goes; `contributors` are contribution ids. */
+export type EudplibBuildEvent =
+  | { kind: "start"; purpose: "save" | "test" | "export"; contributors: string[] }
+  | { kind: "log"; line: string }
+  | { kind: "done"; purpose: "save" | "test" | "export"; contributors: string[]; log: string; chkBytes: number; ms: number }
+  /** `from` is the contribution whose `collect` threw, null when the build itself failed. */
+  | { kind: "failed"; purpose: "save" | "test" | "export"; contributors: string[]; from: string | null; message: string; log: string };
+
 export type EudplibState = "absent" | "installing" | "ready" | "failed";
 
 export interface EudplibService {
@@ -60,4 +96,8 @@ export interface EudplibService {
    * and started again for the next one); `onLog` gets each output line as it is written.
    */
   build(request: EudplibBuildRequest, opts?: { signal?: AbortSignal; onLog?: (line: string) => void }): Promise<EudplibBuildResult>;
+  /** Take part in the map's build on Save, Test Map and export. Dispose when your plugin goes. */
+  contribute(contribution: EudplibContribution): { dispose(): void };
+  /** Hear about the builds the step runs: to show a log, or put a marker where a failure points. */
+  onBuild(listener: (event: EudplibBuildEvent) => void): { dispose(): void };
 }

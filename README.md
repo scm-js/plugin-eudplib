@@ -55,7 +55,41 @@ Python source, loaded like the bundled ones — `settings` in their globals, `on
 `beforeTriggerExec` / `afterTriggerExec` hooks. The bundled ones are euddraft's eight: `MSQC`,
 `bgmplayer`, `cammove`, `chatEvent`, `dataDumper`, `eudTurbo`, `noAirCollision`, `unlimiter`.
 
-The contract (`contract.d.ts`, `ServiceInfo.version` 1):
+### Building when the map is saved
+
+The usual way to use the library is not to call `build()` at all. The library registers the
+editor's build step (`api.document.buildSteps`), which runs whenever the map is saved, tested
+or exported, and your plugin *contributes* to it:
+
+```ts
+const mine = eudplib.contribute({
+  id: "my-plugin",
+  label: "My Plugin",
+  applies: () => hasSomethingToBuild(),          // asked on every save: cheap and synchronous
+  collect: async ({ purpose, signal }) => ({     // compile here; the same fields a build request takes
+    plugins: { mine: { ir: "/work/files/mine.json" } },
+    sources: { mine: MY_EUDDRAFT_PLUGIN_PY },
+    files: { "mine.json": JSON.stringify(compile()) },
+  }),
+});
+```
+
+Everything that applies is merged into one request and the map is built once, so a map that
+uses two plugins of this kind has both in it. The user has one file: what Save writes is the
+built map, the editor keeps the map from before the build inside it and shows that one again
+on open. When nothing contributes, nothing is built and Save is what it always was.
+
+Throw from `collect` with a message worded for the user (`main.ts:3 — no such unit`): the map
+is saved without the build and the editor's notice carries your label and message. Two
+contributions may ask for the same bundled plugin with the same settings (`eudTurbo: {}`);
+two different things under one name is an error that names both. Sections run in the order
+the contributions were made. `onBuild(listener)` reports `start`, each `log` line, and `done`
+or `failed` (with `from`, the id of the contribution whose `collect` threw, or null when the
+build itself failed) — what a plugin needs to show a log or put a marker on a line.
+
+`build()` stays for a one-off: a probe map, a tool that wants bytes and not a save.
+
+The contract (`contract.d.ts`, `ServiceInfo.version` 2; version 1 had no `contribute` or `onBuild`):
 
 ```ts
 export interface EudplibBuildRequest {
@@ -73,6 +107,14 @@ export interface EudplibService {
   downloadBytes: number;
   ensure(opts?: { reason?: string }): Promise<boolean>;             // false when the user declined
   build(request: EudplibBuildRequest, opts?: { signal?: AbortSignal; onLog?: (line: string) => void }): Promise<EudplibBuildResult>;
+  contribute(contribution: EudplibContribution): { dispose(): void };
+  onBuild(listener: (event: EudplibBuildEvent) => void): { dispose(): void };
+}
+export interface EudplibContribution {
+  id: string;
+  label: string;
+  applies(): boolean;
+  collect(ctx: { purpose: "save" | "test" | "export"; signal: AbortSignal }): Promise<{ plugins; sources?; files? }>;
 }
 ```
 
