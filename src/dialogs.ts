@@ -1,6 +1,6 @@
 /**
  * The two dialogs: the install question a build raises when the runtime is absent, and
- * Plugins ▸ eudplib…, the status page with Install and Remove.
+ * plugin's page in Edit ▸ Preferences, the status with Install and Remove.
  */
 import type { PluginApi } from "@scm-js/plugin-api";
 import type { Runtime } from "./runtime";
@@ -33,7 +33,7 @@ export function askInstall(api: PluginApi, runtime: Runtime, reason: string | nu
         if (reason) body.append(w.hint(reason));
         body.append(
           w.hint(about(api)),
-          w.hint(t("It is a one-time download of about {size} from {host} (Pyodide, a Python for the browser, and eudplib {eudplib}), kept by the browser for the next build. Remove it any time under Plugins ▸ eudplib….", { size: mb(downloadBytes(runtime.urls)), host: CDN_HOST, eudplib: EUDPLIB_VERSION })),
+          w.hint(t("It is a one-time download of about {size} from {host} (Pyodide, a Python for the browser, and eudplib {eudplib}), kept by the browser for the next build. Remove it any time under Edit ▸ Preferences ▸ Plugins ▸ eudplib.", { size: mb(downloadBytes(runtime.urls)), host: CDN_HOST, eudplib: EUDPLIB_VERSION })),
           bar, status,
         );
         return () => { controller?.abort(); answer(false); };
@@ -60,32 +60,46 @@ export function askInstall(api: PluginApi, runtime: Runtime, reason: string | nu
   });
 }
 
-/** Plugins ▸ eudplib…: what is installed, the versions, Install / Remove. */
-export function openStatus(api: PluginApi, runtime: Runtime, refresh: () => Promise<void>, state: () => string): void {
+/** The page id `api.ui.open("preferences", { page })` takes. */
+const PREFERENCES_PAGE = "plugin:eudplib";
+
+/** Open the plugin's page in Edit ▸ Preferences — the "status" command. */
+export function openStatus(api: PluginApi): void {
+  api.ui.open("preferences", { page: PREFERENCES_PAGE });
+}
+
+/**
+ * The plugin's page under Edit ▸ Preferences ▸ Plugins: what is installed, the versions,
+ * Install / Remove. Nothing on it waits for OK — a download or a removal happens when
+ * its button is pressed.
+ */
+export function registerPreferencesPage(api: PluginApi, runtime: Runtime, refresh: () => Promise<void>, state: () => string): void {
   const t = api.i18n.t;
   const w = api.ui.widgets;
-  const line = w.statusLine();
-  const versions = w.hint(t("Plugin {plugin}, eudplib {eudplib}, Pyodide {pyodide}, euddraft {euddraft}.", { plugin: VERSION, eudplib: EUDPLIB_VERSION, pyodide: PYODIDE_VERSION, euddraft: EUDDRAFT_COMMIT.slice(0, 7) }));
-  let install: HTMLButtonElement, remove: HTMLButtonElement;
-  const render = async () => {
-    await refresh();
-    const s = state();
-    const size = mb(downloadBytes(runtime.urls));
-    if (s === "ready" && runtime.bundled) line.set(t("Carried by this editor, so nothing is downloaded. Each build starts a fresh Python from it, about two seconds."), "ok");
-    else if (s === "ready") line.set(t("Installed ({size}). Each build starts a fresh Python from it, about two seconds.", { size }), "ok");
-    else if (s === "failed") line.set(t("The runtime failed to start: {why}", { why: runtime.failed ?? "" }), "error");
-    else line.set(t("Not installed. The first build downloads about {size}.", { size }), "warn");
-    install.hidden = s === "ready";
-    remove.hidden = runtime.bundled || (s !== "ready" && s !== "failed");
-  };
-  api.ui.dialog({
-    title: t("eudplib"),
-    size: "sm",
+  api.ui.preferencesPage({
     mount(body) {
-      install = w.button(t("Install now…"), { onClick: async () => { await askInstall(api, runtime, null); await render(); } });
-      remove = w.button(t("Remove the download"), { danger: true, onClick: async () => { await runtime.remove(); await render(); } });
+      const line = w.statusLine();
+      const versions = w.hint(t("Plugin {plugin}, eudplib {eudplib}, Pyodide {pyodide}, euddraft {euddraft}.", { plugin: VERSION, eudplib: EUDPLIB_VERSION, pyodide: PYODIDE_VERSION, euddraft: EUDDRAFT_COMMIT.slice(0, 7) }));
+      let live = true;
+      const render = async () => {
+        await refresh();
+        if (!live) return;
+        const s = state();
+        const size = mb(downloadBytes(runtime.urls));
+        if (s === "ready" && runtime.bundled) line.set(t("Carried by this editor, so nothing is downloaded. Each build starts a fresh Python from it, about two seconds."), "ok");
+        else if (s === "ready") line.set(t("Installed ({size}). Each build starts a fresh Python from it, about two seconds.", { size }), "ok");
+        else if (s === "failed") line.set(t("The runtime failed to start: {why}", { why: runtime.failed ?? "" }), "error");
+        else line.set(t("Not installed. The first build downloads about {size}.", { size }), "warn");
+        install.hidden = s === "ready";
+        remove.hidden = runtime.bundled || (s !== "ready" && s !== "failed");
+      };
+      const install = w.button(t("Install now…"), { onClick: async () => { await askInstall(api, runtime, null); await render(); } });
+      const remove = w.button(t("Remove the download"), { danger: true, onClick: async () => { await runtime.remove(); await render(); } });
+      install.hidden = true;
+      remove.hidden = true;
       body.append(w.hint(about(api)), versions, line, w.row(install, remove));
       void render();
+      return () => { live = false; };
     },
   });
 }

@@ -4,12 +4,12 @@
  * Worker with Pyodide. It has no editor of its own; it holds one service,
  * `eudplib.build`, that other plugins (Magenta, TrigScript) build EUD maps through — by
  * contributing to the build step it registers with the editor, which runs on Save — and a
- * status page under Plugins ▸ eudplib…. The runtime is downloaded once, on the first
+ * status page under Edit ▸ Preferences ▸ Plugins. The runtime is downloaded once, on the first
  * build, after asking — unless the editor carries it (the desktop app, the container image). See `contract.d.ts` for the service and README.md for the rest.
  */
 import type { PluginApi } from "@scm-js/plugin-api";
 import { Contributions } from "./src/contributions";
-import { openStatus } from "./src/dialogs";
+import { openStatus, registerPreferencesPage } from "./src/dialogs";
 import { Runtime } from "./src/runtime";
 import { createService } from "./src/service";
 import { findBundled, runtimeUrls, servedFromRepository } from "./src/urls";
@@ -36,7 +36,7 @@ export function activate(api: PluginApi): () => void {
     applies: () => contributions.applying().length > 0,
     run: ({ map, purpose, signal }) => contributions.run({ map, purpose, signal }, service.build, (labels) => t("{labels} needs it to build this map.", { labels })),
   });
-  api.commands.register({ id: "status", title: "eudplib", run: () => openStatus(api, runtime, service.refresh, service.state) });
-  api.menu.add("Plugins", { label: t("eudplib…"), icon: "plugin", command: "status" });
+  api.commands.register({ id: "status", title: "eudplib", run: () => openStatus(api) });
+  registerPreferencesPage(api, runtime, service.refresh, service.state);
   return () => { provided.dispose(); runtime.terminate(); };
 }

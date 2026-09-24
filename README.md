@@ -24,8 +24,8 @@ installs this one with it.
 The runtime is not part of the plugin: it is downloaded once, on the first build, after a
 dialog says what it is and how big — about 15 MB from cdn.jsdelivr.net (Pyodide, a Python
 for the browser, and the eudplib wheel), kept by the browser for later builds. Cancel and the
-build does not happen; the next one asks again. **Plugins ▸ eudplib…** shows what is
-installed, the versions, and has Install and Remove.
+build does not happen; the next one asks again. The plugin's page in **Edit ▸ Preferences ▸
+Plugins ▸ eudplib** shows what is installed, the versions, and has Install and Remove.
 
 The scmJS desktop app and container image carry the runtime themselves, so there is nothing to
 download there and a build works with no network. That copy is made for one release of this

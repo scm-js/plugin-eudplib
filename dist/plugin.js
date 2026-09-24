@@ -101,7 +101,7 @@ function mergeInputs(parts) {
 }
 
 // src/version.ts
-var VERSION = "0.4.1";
+var VERSION = "0.5.0";
 var EUDPLIB_VERSION = "0.81.0";
 var EUDDRAFT_COMMIT = "a00aef1bd7001891a6ca01abbb1f3240a5b00280";
 var PYODIDE_VERSION = "314.0.7";
@@ -205,7 +205,7 @@ function askInstall(api, runtime, reason) {
         if (reason) body.append(w.hint(reason));
         body.append(
           w.hint(about(api)),
-          w.hint(t("It is a one-time download of about {size} from {host} (Pyodide, a Python for the browser, and eudplib {eudplib}), kept by the browser for the next build. Remove it any time under Plugins \u25B8 eudplib\u2026.", { size: mb(downloadBytes(runtime.urls)), host: CDN_HOST, eudplib: EUDPLIB_VERSION })),
+          w.hint(t("It is a one-time download of about {size} from {host} (Pyodide, a Python for the browser, and eudplib {eudplib}), kept by the browser for the next build. Remove it any time under Edit \u25B8 Preferences \u25B8 Plugins \u25B8 eudplib.", { size: mb(downloadBytes(runtime.urls)), host: CDN_HOST, eudplib: EUDPLIB_VERSION })),
           bar,
           status
         );
@@ -235,37 +235,45 @@ function askInstall(api, runtime, reason) {
     void handle;
   });
 }
-function openStatus(api, runtime, refresh, state) {
+var PREFERENCES_PAGE = "plugin:eudplib";
+function openStatus(api) {
+  api.ui.open("preferences", { page: PREFERENCES_PAGE });
+}
+function registerPreferencesPage(api, runtime, refresh, state) {
   const t = api.i18n.t;
   const w = api.ui.widgets;
-  const line = w.statusLine();
-  const versions = w.hint(t("Plugin {plugin}, eudplib {eudplib}, Pyodide {pyodide}, euddraft {euddraft}.", { plugin: VERSION, eudplib: EUDPLIB_VERSION, pyodide: PYODIDE_VERSION, euddraft: EUDDRAFT_COMMIT.slice(0, 7) }));
-  let install, remove;
-  const render = async () => {
-    await refresh();
-    const s = state();
-    const size = mb(downloadBytes(runtime.urls));
-    if (s === "ready" && runtime.bundled) line.set(t("Carried by this editor, so nothing is downloaded. Each build starts a fresh Python from it, about two seconds."), "ok");
-    else if (s === "ready") line.set(t("Installed ({size}). Each build starts a fresh Python from it, about two seconds.", { size }), "ok");
-    else if (s === "failed") line.set(t("The runtime failed to start: {why}", { why: runtime.failed ?? "" }), "error");
-    else line.set(t("Not installed. The first build downloads about {size}.", { size }), "warn");
-    install.hidden = s === "ready";
-    remove.hidden = runtime.bundled || s !== "ready" && s !== "failed";
-  };
-  api.ui.dialog({
-    title: t("eudplib"),
-    size: "sm",
+  api.ui.preferencesPage({
     mount(body) {
-      install = w.button(t("Install now\u2026"), { onClick: async () => {
+      const line = w.statusLine();
+      const versions = w.hint(t("Plugin {plugin}, eudplib {eudplib}, Pyodide {pyodide}, euddraft {euddraft}.", { plugin: VERSION, eudplib: EUDPLIB_VERSION, pyodide: PYODIDE_VERSION, euddraft: EUDDRAFT_COMMIT.slice(0, 7) }));
+      let live = true;
+      const render = async () => {
+        await refresh();
+        if (!live) return;
+        const s = state();
+        const size = mb(downloadBytes(runtime.urls));
+        if (s === "ready" && runtime.bundled) line.set(t("Carried by this editor, so nothing is downloaded. Each build starts a fresh Python from it, about two seconds."), "ok");
+        else if (s === "ready") line.set(t("Installed ({size}). Each build starts a fresh Python from it, about two seconds.", { size }), "ok");
+        else if (s === "failed") line.set(t("The runtime failed to start: {why}", { why: runtime.failed ?? "" }), "error");
+        else line.set(t("Not installed. The first build downloads about {size}.", { size }), "warn");
+        install.hidden = s === "ready";
+        remove.hidden = runtime.bundled || s !== "ready" && s !== "failed";
+      };
+      const install = w.button(t("Install now\u2026"), { onClick: async () => {
         await askInstall(api, runtime, null);
         await render();
       } });
-      remove = w.button(t("Remove the download"), { danger: true, onClick: async () => {
+      const remove = w.button(t("Remove the download"), { danger: true, onClick: async () => {
         await runtime.remove();
         await render();
       } });
+      install.hidden = true;
+      remove.hidden = true;
       body.append(w.hint(about(api)), versions, line, w.row(install, remove));
       void render();
+      return () => {
+        live = false;
+      };
     }
   });
 }
@@ -2986,8 +2994,8 @@ function activate(api) {
     applies: () => contributions.applying().length > 0,
     run: ({ map, purpose, signal }) => contributions.run({ map, purpose, signal }, service.build, (labels) => t("{labels} needs it to build this map.", { labels }))
   });
-  api.commands.register({ id: "status", title: "eudplib", run: () => openStatus(api, runtime, service.refresh, service.state) });
-  api.menu.add("Plugins", { label: t("eudplib\u2026"), icon: "plugin", command: "status" });
+  api.commands.register({ id: "status", title: "eudplib", run: () => openStatus(api) });
+  registerPreferencesPage(api, runtime, service.refresh, service.state);
   return () => {
     provided.dispose();
     runtime.terminate();
