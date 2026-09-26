@@ -16,5 +16,5 @@
     "skipLibCheck": true,
     "noEmit": true
   },
-  "include": ["plugin.ts", "contract.d.ts", "src/**/*.ts", "tests/**/*.ts", "scripts/**/*.mts"]
+  "include": ["plugin.ts", "ko.ts", "contract.d.ts", "src/**/*.ts", "tests/**/*.ts", "scripts/**/*.mts"]
 }

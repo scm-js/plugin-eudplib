@@ -42,7 +42,7 @@ export function createService(api: PluginApi, runtime: Runtime, contributions: C
     const lines: string[] = [];
     const onLog = (line: string) => { lines.push(line); opts.onLog?.(line); };
     const split = await splitMap(request.map);
-    if (split.unnamed) onLog(api.i18n.t("{n, plural, one {# member of the archive has no name in its listfile and is not carried into the built map.} other {# members of the archive have no name in its listfile and are not carried into the built map.}}", { n: split.unnamed }));
+    if (split.unnamed) onLog(split.unnamed === 1 ? "1 member of the archive has no name in its listfile and is not carried into the built map." : `${split.unnamed} members of the archive have no name in its listfile and are not carried into the built map.`); // build output: English, like the rest of the log
     const members = await runtime.build({
       chk: split.chk, names: split.names, raw: request.map, sections, sources, files,
       shuffle: request.options?.shufflePayload ?? true, sectorSize: request.options?.sectorSize ?? 15,

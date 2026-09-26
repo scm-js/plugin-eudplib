@@ -101,7 +101,7 @@ function mergeInputs(parts) {
 }
 
 // src/version.ts
-var VERSION = "0.5.0";
+var VERSION = "0.6.0";
 var EUDPLIB_VERSION = "0.81.0";
 var EUDDRAFT_COMMIT = "a00aef1bd7001891a6ca01abbb1f3240a5b00280";
 var PYODIDE_VERSION = "314.0.7";
@@ -2949,7 +2949,7 @@ function createService(api, runtime, contributions) {
       opts.onLog?.(line);
     };
     const split = await splitMap(request.map);
-    if (split.unnamed) onLog(api.i18n.t("{n, plural, one {# member of the archive has no name in its listfile and is not carried into the built map.} other {# members of the archive have no name in its listfile and are not carried into the built map.}}", { n: split.unnamed }));
+    if (split.unnamed) onLog(split.unnamed === 1 ? "1 member of the archive has no name in its listfile and is not carried into the built map." : `${split.unnamed} members of the archive have no name in its listfile and are not carried into the built map.`);
     const members = await runtime.build({
       chk: split.chk,
       names: split.names,
@@ -2976,9 +2976,34 @@ function createService(api, runtime, contributions) {
   };
 }
 
+// ko.ts
+var KO = {
+  "A plugin needs it to build this map.": "\uC774 \uB9F5\uC744 \uBE4C\uB4DC\uD558\uB824\uBA74 \uD50C\uB7EC\uADF8\uC778\uC5D0 \uD544\uC694\uD569\uB2C8\uB2E4.",
+  "Cancel": "\uCDE8\uC18C",
+  "Carried by this editor, so nothing is downloaded. Each build starts a fresh Python from it, about two seconds.": "\uC774 \uD3B8\uC9D1\uAE30\uC5D0 \uD3EC\uD568\uB418\uC5B4 \uC788\uC5B4 \uB530\uB85C \uB0B4\uB824\uBC1B\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4. \uBE4C\uB4DC\uD560 \uB54C\uB9C8\uB2E4 \uC5EC\uAE30\uC11C \uC0C8 Python\uC744 \uC2DC\uC791\uD558\uBA70, \uC57D 2\uCD08 \uAC78\uB9BD\uB2C8\uB2E4.",
+  "Downloading\u2026": "\uB2E4\uC6B4\uB85C\uB4DC \uC911\u2026",
+  "Install": "\uC124\uCE58",
+  "Install now\u2026": "\uC9C0\uAE08 \uC124\uCE58\u2026",
+  "Install the local build runtime?": "\uB85C\uCEEC \uBE4C\uB4DC \uB7F0\uD0C0\uC784\uC744 \uC124\uCE58\uD560\uAE4C\uC694?",
+  "Installed ({size}). Each build starts a fresh Python from it, about two seconds.": "\uC124\uCE58\uB428 ({size}). \uBE4C\uB4DC\uD560 \uB54C\uB9C8\uB2E4 \uC5EC\uAE30\uC11C \uC0C8 Python\uC744 \uC2DC\uC791\uD558\uBA70, \uC57D 2\uCD08 \uAC78\uB9BD\uB2C8\uB2E4.",
+  "It is a one-time download of about {size} from {host} (Pyodide, a Python for the browser, and eudplib {eudplib}), kept by the browser for the next build. Remove it any time under Edit \u25B8 Preferences \u25B8 Plugins \u25B8 eudplib.": "{host}\uC5D0\uC11C \uC57D {size}\uB97C \uD55C \uBC88\uB9CC \uB0B4\uB824\uBC1B\uC73C\uBA70 (\uBE0C\uB77C\uC6B0\uC800\uC6A9 Python\uC778 Pyodide\uC640 eudplib {eudplib}), \uB2E4\uC74C \uBE4C\uB4DC\uB97C \uC704\uD574 \uBE0C\uB77C\uC6B0\uC800\uC5D0 \uBCF4\uAD00\uB429\uB2C8\uB2E4. \uD3B8\uC9D1 \u25B8 \uD658\uACBD \uC124\uC815 \u25B8 \uD50C\uB7EC\uADF8\uC778 \u25B8 eudplib\uC5D0\uC11C \uC5B8\uC81C\uB4E0 \uC81C\uAC70\uD560 \uC218 \uC788\uC2B5\uB2C8\uB2E4.",
+  "Not installed. The first build downloads about {size}.": "\uC124\uCE58\uB418\uC9C0 \uC54A\uC558\uC2B5\uB2C8\uB2E4. \uCC98\uC74C \uBE4C\uB4DC\uD560 \uB54C \uC57D {size}\uB97C \uB0B4\uB824\uBC1B\uC2B5\uB2C8\uB2E4.",
+  "Plugin {plugin}, eudplib {eudplib}, Pyodide {pyodide}, euddraft {euddraft}.": "\uD50C\uB7EC\uADF8\uC778 {plugin}, eudplib {eudplib}, Pyodide {pyodide}, euddraft {euddraft}.",
+  "Remove the download": "\uB0B4\uB824\uBC1B\uC740 \uD30C\uC77C \uC81C\uAC70",
+  "The download failed: {why}": "\uB2E4\uC6B4\uB85C\uB4DC\uD558\uC9C0 \uBABB\uD588\uC2B5\uB2C8\uB2E4: {why}",
+  "The eudplib runtime is not installed, so the map was not built.": "eudplib \uB7F0\uD0C0\uC784\uC774 \uC124\uCE58\uB418\uC9C0 \uC54A\uC544 \uB9F5\uC744 \uBE4C\uB4DC\uD558\uC9C0 \uC54A\uC558\uC2B5\uB2C8\uB2E4.",
+  "The runtime failed to start: {why}": "\uB7F0\uD0C0\uC784\uC744 \uC2DC\uC791\uD558\uC9C0 \uBABB\uD588\uC2B5\uB2C8\uB2E4: {why}",
+  "Try again": "\uB2E4\uC2DC \uC2DC\uB3C4",
+  "Waiting to start": "\uC2DC\uC791 \uB300\uAE30 \uC911",
+  "eudplib is the trigger compiler behind euddraft, the tool StarCraft: Remastered EUD maps are built with. This plugin runs it inside the editor, so a map is built here and nothing about it leaves the machine.": "eudplib\uB294 StarCraft: Remastered EUD \uB9F5\uC744 \uB9CC\uB4DC\uB294 \uB3C4\uAD6C\uC778 euddraft\uC758 \uD2B8\uB9AC\uAC70 \uCEF4\uD30C\uC77C\uB7EC\uC785\uB2C8\uB2E4. \uC774 \uD50C\uB7EC\uADF8\uC778\uC740 eudplib\uB97C \uD3B8\uC9D1\uAE30 \uC548\uC5D0\uC11C \uC2E4\uD589\uD558\uBBC0\uB85C, \uB9F5\uC774 \uC5EC\uAE30\uC11C \uBE4C\uB4DC\uB418\uACE0 \uB9F5\uC5D0 \uAD00\uD55C \uC5B4\uB5A4 \uAC83\uB3C4 \uC774 \uCEF4\uD4E8\uD130\uB97C \uBC97\uC5B4\uB098\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4.",
+  "{file} \u2014 {done} of {total}": "{file} \u2014 {total} \uC911 {done}",
+  "{labels} needs it to build this map.": "\uC774 \uB9F5\uC744 \uBE4C\uB4DC\uD558\uB824\uBA74 {labels}\uC5D0 \uD544\uC694\uD569\uB2C8\uB2E4."
+};
+
 // plugin.ts
 var ENTRY_URL = import.meta.url;
 function activate(api) {
+  const catalogue = api.i18n.register({ ko: KO });
   const t = api.i18n.t;
   const override = api.storage.get("runtimeBase", null);
   const page = typeof document === "undefined" ? void 0 : document.baseURI;
@@ -2999,6 +3024,7 @@ function activate(api) {
   return () => {
     provided.dispose();
     runtime.terminate();
+    catalogue.dispose();
   };
 }
 export {

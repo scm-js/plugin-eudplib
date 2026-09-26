@@ -13,11 +13,13 @@ import { openStatus, registerPreferencesPage } from "./src/dialogs";
 import { Runtime } from "./src/runtime";
 import { createService } from "./src/service";
 import { findBundled, runtimeUrls, servedFromRepository } from "./src/urls";
+import { KO } from "./ko";
 
 /** Where this module was loaded from: a `blob:`, an editor's own chunk, or a dev server serving the repository. */
 const ENTRY_URL: string = import.meta.url;
 
 export function activate(api: PluginApi): () => void {
+  const catalogue = api.i18n.register({ ko: KO });
   const t = api.i18n.t;
   const override = api.storage.get<string | null>("runtimeBase", null);
   // A development address wins over a copy the editor carries; otherwise that copy wins over the CDN.
@@ -38,5 +40,5 @@ export function activate(api: PluginApi): () => void {
   });
   api.commands.register({ id: "status", title: "eudplib", run: () => openStatus(api) });
   registerPreferencesPage(api, runtime, service.refresh, service.state);
-  return () => { provided.dispose(); runtime.terminate(); };
+  return () => { provided.dispose(); runtime.terminate(); catalogue.dispose(); };
 }
