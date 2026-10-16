@@ -6,6 +6,8 @@
  * `/work/files/<name>` from a plugin setting).
  *
  *   npm run build:map -- <in.scx> <out.scx> <plugins.json> [name=plugin.py ...] [file=name=path ...]
+ *
+ * EUDPLIB_LOG=1 prints eudplib's log; EUDPLIB_LOG_FILE=<path> writes it to a file (whole, however long).
  */
 import { readFileSync, writeFileSync } from "node:fs";
 import { createRequire } from "node:module";
@@ -52,6 +54,8 @@ try {
   writeFileSync(outPath, out.map);
   console.log(`${outPath}: ${out.map.length} bytes, ${countTriggers((await splitMap(out.map)).chk)} triggers`);
   if (process.env.EUDPLIB_LOG) console.log(lines.join("\n"));
+  // (A file for a log of megabytes: what is still on its way down a pipe is lost at process.exit.)
+  if (process.env.EUDPLIB_LOG_FILE) writeFileSync(process.env.EUDPLIB_LOG_FILE, lines.join("\n"));
 } catch (err) {
   console.error(`build failed: ${(err as Error).message}\n${lines.join("\n")}`);
   process.exit(1);
