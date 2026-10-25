@@ -5,7 +5,8 @@ Brood War map editor. It is a **library**: it has no editor of its own. It runs
 [eudplib](https://github.com/armoha/eudplib), the trigger compiler behind
 [euddraft](https://github.com/armoha/euddraft) that StarCraft: Remastered EUD maps are built
 with, inside the editor — in a Web Worker, through [Pyodide](https://pyodide.org) — and holds
-it out as a service other plugins build maps through. Magenta and TrigScript use it. Nothing
+it out as a service other plugins build maps through. Magenta uses it; TrigScript did until
+4.0, and now lays its programs out itself. Nothing
 about a map leaves the machine, and there is no server.
 
 ## Install

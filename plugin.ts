@@ -2,7 +2,7 @@
  * eudplib — a library plugin for the scmJS map editor (https://github.com/scm-js/scm-js):
  * eudplib, the EUD trigger compiler behind euddraft, run inside the editor in a Web
  * Worker with Pyodide. It has no editor of its own; it holds one service,
- * `eudplib.build`, that other plugins (Magenta, TrigScript) build EUD maps through — by
+ * `eudplib.build`, that other plugins (Magenta) build EUD maps through — by
  * contributing to the build step it registers with the editor, which runs on Save — and a
  * status page under Edit ▸ Preferences ▸ Plugins. The runtime is downloaded once, on the first
  * build, after asking — unless the editor carries it (the desktop app, the container image). See `contract.d.ts` for the service and README.md for the rest.
@@ -30,7 +30,7 @@ export function activate(api: PluginApi): () => void {
   const contributions = new Contributions();
   const service = createService(api, runtime, contributions);
   const provided = api.services.provide("build", service, { version: 2 });
-  // The one eudplib step: whatever TrigScript, Magenta and the rest contribute, built once as the map leaves the editor.
+  // The one eudplib step: whatever Magenta and the rest contribute, built once as the map leaves the editor.
   // An editor from before build steps has no `buildSteps`: the service still works there, through `build()`.
   api.document.buildSteps?.add({
     id: "build",

@@ -2,11 +2,11 @@
  * What other plugins want built into the map, and the one build that carries all of it.
  *
  * The editor runs a build step whenever the map leaves it (Save, Test Map, an export), and
- * this plugin owns the only eudplib one: TrigScript and Magenta do not build for themselves,
- * they `contribute` — a cheap `applies()` and a `collect()` that answers the same
- * `plugins` / `sources` / `files` a `build()` request takes — and the step merges whatever
- * applies into one request. A map that uses both is built once, with both in it; a map that
- * uses neither never reaches eudplib.
+ * this plugin owns the only eudplib one: a plugin that builds through eudplib (Magenta; TrigScript
+ * too, until its 4.0) does not build for itself, it `contribute`s — a cheap `applies()` and a
+ * `collect()` that answers the same `plugins` / `sources` / `files` a `build()` request takes — and
+ * the step merges whatever applies into one request. A map that uses two such plugins is built once,
+ * with both in it; a map that uses none never reaches eudplib.
  *
  * No editor API in here, so it runs under vitest: the step's `build` is handed in.
  */
